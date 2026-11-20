@@ -1,0 +1,193 @@
+app:
+  id: ari:cloud:ecosystem::app/1aef7bb3-351c-48b2-af86-96ca9367752c
+  runtime:
+    name: nodejs24.x
+
+modules:
+  macro:
+    - key: session-debrief
+      title: Session debrief
+      description: Lap times, stints, tyre wear and pit stops for a race session, with
+        findings you can file in Jira.
+      resource: debrief
+      render: native
+      resolver:
+        function: resolver
+      layout: block
+      config:
+        resource: debrief-config
+        render: native
+        title: Choose a session
+        openOnInsert: true
+
+  rovo:agent:
+    - key: race-engineer
+      name: Race engineer
+      description: Answers questions about a race session's timing data and files
+        findings as Jira issues.
+      prompt: |
+        You are a race engineer reviewing a session's timing data with the team.
+
+        Where the data comes from:
+        - Every number comes from the actions. Pit Wall reads public timing data from OpenF1; a real team would use its own telemetry. Mention that once if someone asks where the data comes from.
+        - If the conversation started on a Confluence page with a Session debrief, the actions find that session by themselves. Otherwise, use the find-session action with the season, the race and the session the user names, then pass its sessionKey to the other actions.
+
+        How to answer:
+        - Only state numbers that an action returned in this conversation. Never estimate, round up a story or fill a gap from memory. If the actions don't have it, say what is missing.
+        - Name the action's rule when you use a finding, for example "1.5 s over the team's median".
+        - To explain lost time in a stint, call stint-analysis with the driver and the stint. Look at the laps it marks (in-laps, out-laps, safety car laps, laps over 7% off the fastest), the wear figure against the compound's median, the field's pace on the same compound, and the gap to the leader at the start and end of the stint.
+        - Give times in seconds with the decimals the action gave. Use the drivers' three-letter codes.
+        - Keep answers short: the finding first, then the two or three numbers behind it.
+
+        Jira:
+        - Only create an issue when the user asks for one. Confirm the finding and the Jira project key first, then call create-finding.
+        - After creating it, give the issue key and link.
+      conversationStarters:
+        - What stood out in this session?
+        - Which pit stops were slow, and by how much?
+        - Why did car 23 lose time in stint 2?
+        - File the slowest pit stop as a Jira issue
+      actions:
+        - find-session
+        - session-summary
+        - stint-analysis
+        - pit-stops
+        - create-finding
+
+  action:
+    - key: find-session
+      name: Find session
+      function: fn-find-session
+      actionVerb: GET
+      description: Finds a session's key from a season, a Grand Prix name, country or
+        circuit, and a session name. Use it before the other actions when the
+        user names a race.
+      inputs:
+        year:
+          title: Season
+          type: integer
+          required: true
+          description: The season, for example 2025.
+        race:
+          title: Grand Prix
+          type: string
+          required: true
+          description: Part of the Grand Prix name, the country or the circuit, for
+            example Italian, Italy or Monza.
+        session:
+          title: Session
+          type: string
+          required: false
+          description: Race, Qualifying, Sprint, Practice 1, Practice 2 or Practice 3.
+            Race if not given.
+    - key: session-summary
+      name: Session summary
+      function: fn-session-summary
+      actionVerb: GET
+      description: The session's order at the flag, best laps, pit stop counts and
+        every finding with its numbers. Use it for overview questions.
+      inputs:
+        sessionKey:
+          title: Session key
+          type: integer
+          required: false
+          description: From find-session. Leave out to use the session debriefed on the
+            current page.
+    - key: stint-analysis
+      name: Stint analysis
+      function: fn-stint-analysis
+      actionVerb: GET
+      description: One driver's stints, or one stint lap by lap with tyre wear, the
+        field's pace on the same compound and the gap to the leader. Use it to
+        explain where a driver lost time.
+      inputs:
+        sessionKey:
+          title: Session key
+          type: integer
+          required: false
+          description: From find-session. Leave out to use the session debriefed on the
+            current page.
+        driver:
+          title: Driver
+          type: string
+          required: true
+          description: Car number, three-letter code or surname, for example 23, ALB or
+            Albon.
+        stint:
+          title: Stint
+          type: integer
+          required: false
+          description: Stint number, 1 for the first. Leave out to list the driver's stints.
+    - key: pit-stops
+      name: Pit stops
+      function: fn-pit-stops
+      actionVerb: GET
+      description: Every pit stop with its stationary time, the median it is compared
+        with and how far over it was. Use it for pit stop questions.
+      inputs:
+        sessionKey:
+          title: Session key
+          type: integer
+          required: false
+          description: From find-session. Leave out to use the session debriefed on the
+            current page.
+        driver:
+          title: Driver
+          type: string
+          required: false
+          description: Only this driver's stops. Car number, code or surname.
+    - key: create-finding
+      name: Create finding issue
+      function: fn-create-finding
+      actionVerb: CREATE
+      description: Creates a Jira issue for one finding from session-summary, with its
+        numbers and a link back to the debrief page. Only use it when the user
+        asks for an issue.
+      inputs:
+        findingId:
+          title: Finding
+          type: string
+          required: true
+          description: The finding's id from session-summary, for example stop-NOR-46.
+        projectKey:
+          title: Jira project key
+          type: string
+          required: false
+          description: The Jira project to file in, for example PW. Leave out to use the
+            project set on the debrief page.
+        sessionKey:
+          title: Session key
+          type: integer
+          required: false
+          description: From find-session. Leave out to use the session debriefed on the
+            current page.
+
+  function:
+    - key: resolver
+      handler: index.handler
+    - key: fn-find-session
+      handler: index.findSession
+    - key: fn-session-summary
+      handler: index.sessionSummary
+    - key: fn-stint-analysis
+      handler: index.stintAnalysis
+    - key: fn-pit-stops
+      handler: index.pitStops
+    - key: fn-create-finding
+      handler: index.createFinding
+
+resources:
+  - key: debrief
+    path: src/frontend/debrief.tsx
+  - key: debrief-config
+    path: src/frontend/config.tsx
+
+permissions:
+  scopes:
+    - storage:app
+    - read:jira-work
+    - write:jira-work
+  external:
+    fetch:
+      backend:
+        - address: https://api.openf1.org
