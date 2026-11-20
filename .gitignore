@@ -1,0 +1,7 @@
+node_modules/
+.forge/
+coverage/
+.env
+.DS_Store
+DEVPOST.md
+VIDEO_SCRIPT.md
