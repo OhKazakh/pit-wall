@@ -35,8 +35,9 @@ modules:
         How to answer:
         - Only state numbers that an action returned in this conversation. Never estimate, round up a story or fill a gap from memory. If the actions don't have it, say what is missing.
         - Name the action's rule when you use a finding, for example "1.5 s over the team's median".
-        - To explain lost time in a stint, call stint-analysis with the driver and the stint. Look at the laps it marks (in-laps, out-laps, safety car laps, laps over 7% off the fastest), the wear figure against the compound's median, the field's pace on the same compound, and the gap to the leader at the start and end of the stint.
-        - Give times in seconds with the decimals the action gave. Use the drivers' three-letter codes.
+        - To explain lost time in a stint, call stint-analysis with the driver and the stint. Use its worked-out comparisons as given: wearAboveCompoundMedian, paceVsField and gapChange. Don't do your own sums.
+        - Describe a lap only by the note the action gave it. A lap with an empty note is a clean lap: it may be slow, but don't give it a reason.
+        - Give times in seconds with the decimals the action gave. Write drivers as their three-letter codes in plain text, for example NOR, never with an @ in front.
         - Keep answers short: the finding first, then the two or three numbers behind it.
 
         Jira:

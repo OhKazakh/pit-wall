@@ -43,9 +43,14 @@ const Config = () => {
 
   useEffect(() => {
     call<{ key: string; name: string }[]>("projects")
-      .then((found) => setProjects(found.map((p) => ({ label: `${p.name} (${p.key})`, value: p.key }))))
+      .then((found) => {
+        const options = found.map((p) => ({ label: `${p.name} (${p.key})`, value: p.key }));
+        setProjects(options);
+        const current = options.find((o) => o.value === saved.projectKey);
+        if (current) setProject(current);
+      })
       .catch(() => setProjects([]));
-  }, []);
+  }, [saved.projectKey]);
 
   useEffect(() => {
     setRace(null);

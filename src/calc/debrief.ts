@@ -30,6 +30,13 @@ export interface Debrief {
   findings: Finding[];
 }
 
+// OpenF1 writes surnames in capitals ("Max VERSTAPPEN"); pages read better without.
+export const displayName = (name: string) =>
+  name
+    .split(" ")
+    .map((word) => (word.length > 1 && word === word.toUpperCase() ? word[0] + word.slice(1).toLowerCase() : word))
+    .join(" ");
+
 export function buildDebrief(session: CompactSession): Debrief {
   const laps = lapTable(session);
   const race = isRace(session.info.type);
@@ -44,7 +51,7 @@ export function buildDebrief(session: CompactSession): Debrief {
   const drivers = session.drivers
     .map((d) => ({
       driver: d.code,
-      name: d.name,
+      name: displayName(d.name),
       team: d.team,
       colour: d.colour,
       position: order.includes(d.code) ? order.indexOf(d.code) + 1 : null,
@@ -71,6 +78,10 @@ export interface StintDetail {
   compoundMedianWear: number | null;
   fieldPace: number | null; // median fuel-corrected lap of the others on the same compound, same laps
   laps: { lap: number; time: number | null; tyreAge: number | null; clean: boolean; note: string }[];
+  // Worked out here so the agent repeats a number instead of doing sums.
+  wearAboveCompoundMedian: number | null; // s per lap of tyre age
+  paceVsField: number | null; // s per lap, positive is slower than the field
+  gapChange: number | null; // s, positive is losing time to the leader
   gapAtStart: number | null;
   gapAtEnd: number | null;
   positionAtStart: number | null;
@@ -95,14 +106,33 @@ export function stintDetail(session: CompactSession, driver: string, stintNumber
   const gaps = race ? gapsToLeader(laps).filter((g) => g.driver === driver) : [];
   const at = (lap: number) => gaps.find((g) => g.lap === lap);
   const note = (l: LapRecord) =>
-    l.pitIn ? "in-lap" : l.pitOut ? "out-lap" : isNeutralised(l.status) ? "safety car or VSC" : !l.accurate ? "not timed cleanly" : clean.has(l) ? "" : "more than 7% off the fastest lap";
+    l.pitIn
+      ? "in-lap"
+      : l.pitOut
+        ? "out-lap"
+        : isNeutralised(l.status)
+          ? "safety car or VSC"
+          : race && l.lap === 1
+            ? "opening lap"
+            : !l.accurate
+              ? "not timed cleanly"
+              : clean.has(l)
+                ? ""
+                : "more than 7% off the fastest lap";
+  const compoundMedianWear = median(sameCompound);
+  const gapAtStart = at(stint.firstLap)?.gap ?? null;
+  const gapAtEnd = at(stint.lastLap)?.gap ?? null;
+  const diff = (a: number | null, b: number | null, digits = 3) => (a === null || b === null ? null : round(a - b, digits));
   return {
     stint,
-    compoundMedianWear: median(sameCompound),
+    compoundMedianWear,
     fieldPace: fieldPace === null ? null : round(fieldPace),
     laps: own.map((l) => ({ lap: l.lap, time: l.time, tyreAge: l.tyreAge, clean: clean.has(l), note: note(l) })),
-    gapAtStart: at(stint.firstLap)?.gap ?? null,
-    gapAtEnd: at(stint.lastLap)?.gap ?? null,
+    wearAboveCompoundMedian: diff(stint.wear, compoundMedianWear, 4),
+    paceVsField: diff(stint.pace, fieldPace),
+    gapChange: diff(gapAtEnd, gapAtStart),
+    gapAtStart,
+    gapAtEnd,
     positionAtStart: at(stint.firstLap)?.position ?? null,
     positionAtEnd: at(stint.lastLap)?.position ?? null,
   };

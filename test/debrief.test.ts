@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { buildDebrief, stintDetail } from "../src/calc/debrief";
+import { buildDebrief, displayName, stintDetail } from "../src/calc/debrief";
 import { monza } from "./monza";
 
 test("Monza 2025: the order at the flag, the race length and the findings", () => {
@@ -15,6 +15,21 @@ test("Monza 2025: a stint's detail has its laps, wear and gap to the leader", ()
   const detail = stintDetail(monza(), "NOR", 1);
   expect(detail?.stint).toMatchObject({ compound: "MEDIUM", firstLap: 1, lastLap: 46 });
   expect(detail?.laps).toHaveLength(46);
-  expect(detail?.laps[0].note).toBe("not timed cleanly"); // the opening lap
+  expect(detail?.laps[0].note).toBe("opening lap");
   expect(detail?.gapAtEnd).not.toBeNull();
+});
+
+test("names lose OpenF1's capitals", () => {
+  expect(displayName("Max VERSTAPPEN")).toBe("Max Verstappen");
+  expect(displayName("Andrea Kimi ANTONELLI")).toBe("Andrea Kimi Antonelli");
+  expect(buildDebrief(monza()).drivers[0].name).toBe("Max Verstappen");
+});
+
+test("Monza 2025: COL's second stint, with the comparisons done", () => {
+  const detail = stintDetail(monza(), "COL", 2);
+  expect(detail?.stint.wear).toBe(0.0676);
+  expect(detail?.wearAboveCompoundMedian).toBe(0.0554);
+  expect(detail?.paceVsField).toBe(0.367);
+  // Laps 39 and 50 are slow but clean: nothing to explain them away.
+  expect(detail?.laps.filter((l) => l.lap === 39 || l.lap === 50).map((l) => l.note)).toEqual(["", ""]);
 });

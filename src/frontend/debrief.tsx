@@ -57,7 +57,7 @@ const FindingCard = ({
     <Box xcss={card}>
       <Stack space="space.100">
         <Inline space="space.100" alignBlock="center">
-          <Lozenge appearance={finding.kind === "slow-stop" ? "moved" : "removed"}>
+          <Lozenge appearance={finding.kind === "slow-stop" ? "moved" : "removed"} maxWidth={160}>
             {finding.kind === "slow-stop" ? "Pit stop" : "Tyre wear"}
           </Lozenge>
           <Text weight="bold">{finding.title}</Text>

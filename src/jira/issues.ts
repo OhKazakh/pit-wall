@@ -21,6 +21,28 @@ const LABELS: Record<string, string> = {
   penaltyServed: "Time penalty served and taken out (s)",
 };
 
+const ONE_DECIMAL = new Set(["value", "median", "delta", "lane", "penaltyServed"]);
+const THREE_DECIMALS = new Set(["wear", "compoundMedian", "excess"]);
+const WORDS: Record<string, string> = {
+  stationary: "stationary time",
+  lane: "pit lane time",
+  team: "the team's median",
+  session: "the session median",
+};
+
+function shown(key: string, value: number | string): string {
+  if (typeof value === "string") return WORDS[value] ?? value.toLowerCase();
+  if (ONE_DECIMAL.has(key)) return value.toFixed(1);
+  if (THREE_DECIMALS.has(key)) return value.toFixed(3);
+  return String(value);
+}
+
+// The finding's numbers in the order the labels list them, rounded the way the page shows them.
+export const numberLines = (numbers: Record<string, number | string>) =>
+  Object.keys(LABELS)
+    .filter((key) => key in numbers)
+    .map((key) => `${LABELS[key]}: ${shown(key, numbers[key])}`);
+
 const text = (value: string, href?: string) => ({
   type: "text",
   text: value,
@@ -37,9 +59,9 @@ export function description(finding: Finding, session: SessionInfo, pageUrl: str
       paragraph(text(`${session.year} ${session.meetingName}, ${session.name}. ${finding.detail}`)),
       {
         type: "bulletList",
-        content: Object.entries(finding.numbers).map(([key, value]) => ({
+        content: numberLines(finding.numbers).map((line) => ({
           type: "listItem",
-          content: [paragraph(text(`${LABELS[key] ?? key}: ${value}`))],
+          content: [paragraph(text(line))],
         })),
       },
       paragraph(text("Debrief page: "), text(pageUrl || "not linked", pageUrl || undefined)),

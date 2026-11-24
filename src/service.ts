@@ -3,7 +3,7 @@ import { buildDebrief, type Debrief } from "./calc/debrief";
 import { openf1, store } from "./data/kvs";
 import { type CompactSession, loadSession } from "./data/session";
 
-const VERSION = "v1";
+const VERSION = "v2";
 const DEBRIEF_TTL_DAYS = 30;
 
 export interface PageLink {
