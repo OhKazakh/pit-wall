@@ -111,4 +111,4 @@ forge install
 
 Timing data from [OpenF1](https://openf1.org). The session data handling is ported from my earlier project, [Formula Analyst](https://github.com/OhKazakh/formula-analyst).
 
-Released under the [MIT License](LICENSE).
+Released under the [MIT License](LICENSE). See also the [privacy policy](PRIVACY.md) and [terms of use](TERMS.md).
