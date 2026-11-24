@@ -6,7 +6,7 @@ The demo uses public Formula 1 timing data from [OpenF1](https://openf1.org). A 
 
 ## What it does
 
-**Session debrief (Confluence macro).** Type `/Session debrief` on a page, pick a season, a Grand Prix and a session, and optionally a Jira project. The macro shows:
+**Session debrief (Confluence macro).** Add it to a page, pick a season, a Grand Prix and a session, and optionally a Jira project. The macro shows:
 
 - the session in one line: laps, laps under a safety car or VSC, the top 3 on the road and the fastest clean lap
 - **Findings**: stops and stints that stand out, each with its numbers and a "Create Jira issue" button
@@ -31,8 +31,8 @@ Without a debrief on the page, the agent finds the session from what you name, f
 
 ## Using it
 
-1. Install Pit Wall on a site with Confluence and Jira. Rovo is needed for the agent only.
-2. In a Confluence page, type `/Session debrief`, choose the session and, for findings, a Jira project. Publish the page.
+1. Install Pit Wall on a site with Confluence and Jira. Rovo is needed for the agent only, and free plans don't include it. If the install dialog says "Installation failed" for one of the two products, click Install again. Atlassian installs both at once, and on my test sites the second one needed a retry.
+2. Edit a Confluence page, click **+** (Insert elements) in the toolbar and search for **Session debrief**. Choose the session and, for findings, a Jira project. Publish the page.
 3. The first load of a session makes seven requests to OpenF1 and takes a few seconds. After that the session is read from storage.
 4. Open Rovo chat on the page, choose **Race engineer** from the agent list and ask, for example, "Which pit stops were slow, and by how much?"
 
