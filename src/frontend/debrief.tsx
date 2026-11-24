@@ -56,12 +56,12 @@ const FindingCard = ({
   return (
     <Box xcss={card}>
       <Stack space="space.100">
-        <Inline space="space.100" alignBlock="center">
-          <Lozenge appearance={finding.kind === "slow-stop" ? "moved" : "removed"} maxWidth={160}>
+        <Inline>
+          <Lozenge appearance={finding.kind === "slow-stop" ? "moved" : "removed"}>
             {finding.kind === "slow-stop" ? "Pit stop" : "Tyre wear"}
           </Lozenge>
-          <Text weight="bold">{finding.title}</Text>
         </Inline>
+        <Text weight="bold">{finding.title}</Text>
         <Text>{finding.detail}</Text>
         {issue ? (
           <Text>
@@ -101,8 +101,6 @@ const App = () => {
   const [error, setError] = useState("");
 
   const siteUrl = context?.siteUrl ?? "";
-  const contentId = (context?.extension as { content?: { id?: string } } | undefined)?.content?.id;
-  const pageUrl = siteUrl && contentId ? `${siteUrl}/wiki/pages/viewpage.action?pageId=${contentId}` : "";
   const sessionKey = config?.sessionKey;
   const projectKey = config?.projectKey ?? "";
 
@@ -110,13 +108,13 @@ const App = () => {
     if (!sessionKey || !context) return;
     setData(null);
     setError("");
-    call<{ debrief: Debrief; issues: Record<string, Issue> }>("debrief", { sessionKey, projectKey, pageUrl })
+    call<{ debrief: Debrief; issues: Record<string, Issue> }>("debrief", { sessionKey, projectKey, siteUrl })
       .then((reply) => {
         setData(reply.debrief);
         setIssues(reply.issues);
       })
       .catch((e) => setError(e instanceof Error ? e.message : String(e)));
-  }, [sessionKey, projectKey, pageUrl, Boolean(context)]);
+  }, [sessionKey, projectKey, siteUrl, Boolean(context)]);
 
   if (!sessionKey) {
     return (
@@ -150,7 +148,6 @@ const App = () => {
       sessionKey,
       findingId: finding.id,
       projectKey,
-      pageUrl,
       siteUrl,
     });
     setIssues((current) => ({ ...current, [finding.id]: issue }));

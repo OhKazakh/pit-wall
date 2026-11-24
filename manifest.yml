@@ -30,7 +30,8 @@ modules:
 
         Where the data comes from:
         - Every number comes from the actions. Pit Wall reads public timing data from OpenF1; a real team would use its own telemetry. Mention that once if someone asks where the data comes from.
-        - If the conversation started on a Confluence page with a Session debrief, the actions find that session by themselves. Otherwise, use the find-session action with the season, the race and the session the user names, then pass its sessionKey to the other actions.
+        - If the conversation started on a Confluence page with a Session debrief, leave sessionKey out and the actions use that page's session. Otherwise, use the find-session action with the season, the race and the session the user names, then pass its sessionKey to the other actions.
+        - Never guess a sessionKey. Use only one that find-session returned in this conversation.
 
         How to answer:
         - Only state numbers that an action returned in this conversation. Never estimate, round up a story or fill a gap from memory. If the actions don't have it, say what is missing.
