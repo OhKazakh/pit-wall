@@ -4,6 +4,38 @@ Pit Wall turns a race session's timing data into a debrief in Confluence, a Rovo
 
 The demo uses public Formula 1 timing data from [OpenF1](https://openf1.org). A real team would plug in its own telemetry instead. Pit Wall is unofficial and not associated with Formula 1 or any team.
 
+## What it does
+
+**Session debrief (Confluence macro).** Type `/Session debrief` on a page, pick a season, a Grand Prix and a session, and optionally a Jira project. The macro shows:
+
+- the session in one line: laps, laps under a safety car or VSC, the top 3 on the road and the fastest clean lap
+- **Findings**: stops and stints that stand out, each with its numbers and a "Create Jira issue" button
+- **Lap times**: clean laps of the top 5 at the flag (the 5 quickest outside a race), lap by lap
+- **Tyre wear**: wear per stint as a chart and a table with each stint's laps, clean laps, wear and median lap
+- **Pit stops** (races): every stop against the median it's compared with, served penalties taken out
+- **Gaps** (races): the top 5's gap to the leader, lap by lap
+
+**Race engineer (Rovo agent).** Ask it about the session on the page, or about any session from 2023 on. It has five actions, and its prompt tells it to state only numbers those actions returned. Rovo's debug view lists which actions it called for each answer.
+
+| Action | What it returns |
+| --- | --- |
+| Find session | A session's key from a season, a Grand Prix, country or circuit, and a session name |
+| Session summary | The order at the flag, best laps, stop counts and every finding with its numbers |
+| Stint analysis | One driver's stints, or one stint lap by lap with a note on each lap that isn't clean, plus its wear against the compound's median, its pace against the field on the same compound, and its gap to the leader at the start and end |
+| Pit stops | Every stop with its time, the median it's compared with and how far over it was |
+| Create finding issue | A Jira issue for one finding. Rovo asks you to confirm before it runs |
+
+Without a debrief on the page, the agent finds the session from what you name, for example "2024 Silverstone race".
+
+**Jira findings.** An issue from the button or the agent gets the finding as its summary, the numbers as a list, a link back to the debrief page and the label `pit-wall`. It's created as the person who asked, so Jira's own permissions apply. Pit Wall remembers which findings are filed, so the page shows "Filed as PW-1" and neither the button nor the agent files the same finding twice.
+
+## Using it
+
+1. Install Pit Wall on a site with Confluence and Jira. Rovo is needed for the agent only.
+2. In a Confluence page, type `/Session debrief`, choose the session and, for findings, a Jira project. Publish the page.
+3. The first load of a session makes seven requests to OpenF1 and takes a few seconds. After that the session is read from storage.
+4. Open Rovo chat on the page, choose **Race engineer** from the agent list and ask, for example, "Which pit stops were slow, and by how much?"
+
 ## How the numbers are worked out
 
 All the maths lives in [`src/calc`](src/calc) and is covered by tests in [`test`](test), including a run on the 2025 Italian Grand Prix as OpenF1 served it.
@@ -22,6 +54,47 @@ All the maths lives in [`src/calc`](src/calc) and is covered by tests in [`test`
 
 **Gaps and order.** The gap to the leader is the time between the first car completing a lap and each car completing the same lap. The order at the flag is the order on track, by laps completed and then by who finished the last of them first, so penalties aren't applied.
 
+## Data, storage and permissions
+
+Pit Wall reads public timing data from `api.openf1.org`, the only outside address the manifest lets it reach. It asks for three scopes:
+
+| Scope | Why |
+| --- | --- |
+| `storage:app` | Caching sessions and debriefs, and remembering page links and filed issues |
+| `read:jira-work` | Listing projects and issue types for filing a finding |
+| `write:jira-work` | Creating the issue |
+
+What it keeps in Forge storage:
+
+- a finished session's timing data and its debrief, for 30 days
+- the season and session lists, for 1 day
+- which session each page debriefs and which Jira project it files in, so the agent can answer "this page"
+- the key of each filed issue
+
+It stores no names of people on your site. Lap and pit data is about drivers in public races.
+
+## Limits
+
+- OpenF1 has timing data from the 2023 season on.
+- Stationary pit times exist in recent seasons only. Older stops are compared by pit lane time.
+- The order at the flag is the order on track. Post-race penalties aren't applied.
+- The numbers are as good as the public feed. A team running its own telemetry would replace `src/openf1` and `src/data` and keep the rest.
+- The agent's wording comes from Rovo's model. The numbers come from the actions.
+
+## Project layout
+
+```
+manifest.yml        the macro, the agent, its actions and the permissions
+src/calc            the maths, no Forge imports, all tested
+src/openf1          the OpenF1 client: a 400 ms pause between requests, retries on 429
+src/data            compacting a session and caching it in Forge storage
+src/service.ts      what the macro and the agent share
+src/jira            creating issues
+src/frontend        the macro and its settings, in UI Kit
+src/index.ts        the resolver and the five agent actions
+test                tests, with the 2025 Italian Grand Prix as a fixture
+```
+
 ## Development
 
 Needs Node.js 22.23.4 or later and the [Forge CLI](https://developer.atlassian.com/platform/forge/getting-started/).
@@ -30,6 +103,8 @@ Needs Node.js 22.23.4 or later and the [Forge CLI](https://developer.atlassian.c
 npm install
 npm test
 npm run typecheck
+forge deploy
+forge install
 ```
 
 ## Credits
