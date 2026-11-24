@@ -15,15 +15,14 @@ The demo uses public Formula 1 timing data from [OpenF1](https://openf1.org). A 
 - **Pit stops** (races): every stop against the median it's compared with, served penalties taken out
 - **Gaps** (races): the top 5's gap to the leader, lap by lap
 
-**Race engineer (Rovo agent).** Ask it about the session on the page, or about any session from 2023 on. It has six actions, and its prompt tells it to state only numbers those actions returned. Rovo's debug view lists which actions it called for each answer.
+**Race engineer (Rovo agent).** Ask it about the session on the page, or about any session from 2023 on. It has five actions, and its prompt tells it to state only numbers those actions returned. Rovo's debug view lists which actions it called for each answer.
 
 | Action | What it returns |
 | --- | --- |
 | Find session | A session's key from a season, a Grand Prix, country or circuit, and a session name |
 | Session summary | The order at the flag, best laps, stop counts and every finding with its numbers |
 | Stint analysis | One driver's stints, or one stint lap by lap with a note on each lap that isn't clean, plus its wear against the compound's median, its pace against the field on the same compound, and its gap to the leader at the start and end |
-| Pit stops | Every stop with its time, the median it's compared with and how far over it was |
-| Pit rejoin | Where a driver would have come back on track had they pitted at the end of a given lap: the position, the cars just ahead and behind with their gaps, and the pit loss used. If the driver really stopped on that lap, what happened |
+| Pit stops | Every stop with its time, the median it's compared with and how far over it was. Given a driver and a lap, also where that driver would have come back on track had they pitted at the end of it: the position, the cars just ahead and behind with their gaps, and the pit loss used. If the driver really stopped on that lap, what happened |
 | Create finding issue | A Jira issue for one finding. Rovo asks you to confirm before it runs |
 
 Without a debrief on the page, the agent finds the session from what you name, for example "2024 Silverstone race".
@@ -94,7 +93,7 @@ src/data            compacting a session and caching it in Forge storage
 src/service.ts      what the macro and the agent share
 src/jira            creating issues
 src/frontend        the macro and its settings, in UI Kit
-src/index.ts        the resolver and the six agent actions
+src/index.ts        the resolver and the five agent actions
 test                tests, with the 2025 Italian Grand Prix as a fixture
 ```
 

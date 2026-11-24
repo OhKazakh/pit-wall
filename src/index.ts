@@ -87,7 +87,7 @@ interface ActionPayload {
   session?: string;
   driver?: string;
   stint?: number;
-  lap?: number;
+  pitLap?: number;
   findingId?: string;
   projectKey?: string;
   context?: { confluence?: { contentId?: string } };
@@ -99,22 +99,26 @@ async function sessionFor(payload: ActionPayload): Promise<number> {
   const link = contentId ? await pageLink(String(contentId)) : undefined;
   if (link) return link.sessionKey;
   throw new Error(
-    "No session given and this page has no Session debrief. Ask with a season, race and session, for example 2025 Monza race.",
+    "No session for this page here. Call find-session with the season and Grand Prix from the page title (for example 2025 and Italian), then pass its sessionKey.",
   );
 }
 
 // Only the action's own inputs are logged. The payload also carries a signed context token,
 // which must never end up in logs.
-const INPUTS = ["year", "race", "session", "sessionKey", "driver", "stint", "lap", "findingId", "projectKey"] as const;
+const INPUTS = ["year", "race", "session", "sessionKey", "driver", "stint", "pitLap", "findingId", "projectKey"] as const;
 function logCall(action: string, payload: ActionPayload) {
   const inputs = Object.fromEntries(INPUTS.filter((k) => payload[k] !== undefined).map((k) => [k, payload[k]]));
   console.log(`${action} ${JSON.stringify(inputs)}`);
 }
 
+// Rovo treats a reply with an `error` field as a failed call and hides the text from the agent,
+// so problems go back as a normal answer the agent can read and act on.
+const problem = (message: string) => ({ answered: false, problem: message });
+
 const fail = (action: string, error: unknown) => {
   const message = error instanceof Error ? error.message : String(error);
   console.error(`${action} failed: ${message}`);
-  return { error: message };
+  return problem(message);
 };
 
 async function driverCode(sessionKey: number, driver: string): Promise<string> {
@@ -135,7 +139,7 @@ export async function findSession(payload: ActionPayload) {
     const found = (await meetings(year, openf1(), store)).filter((m) =>
       [m.meeting_name, m.location, m.country_name].some((field) => field.toLowerCase().includes(race)),
     );
-    if (!found.length) return { error: `No ${year} race matches "${payload.race}".` };
+    if (!found.length) return problem(`No ${year} race matches "${payload.race}".`);
     const meeting = found[0];
     const all = await sessions(meeting.meeting_key, openf1(), store);
     const name = (payload.session ?? "Race").toLowerCase();
@@ -188,7 +192,7 @@ export async function stintAnalysis(payload: ActionPayload) {
       return { driver: code, stints, hint: "Ask about one stint number for its laps and gaps." };
     }
     const detail = stintDetail(data, code, Number(payload.stint));
-    if (!detail) return { error: `${code} has no stint ${payload.stint}. Stints: ${stints.map((s) => s.stint).join(", ")}.` };
+    if (!detail) return problem(`${code} has no stint ${payload.stint}. Stints: ${stints.map((s) => s.stint).join(", ")}.`);
     return {
       driver: code,
       ...detail,
@@ -203,34 +207,24 @@ export async function pitStops(payload: ActionPayload) {
   logCall("pitStops", payload);
   try {
     const sessionKey = await sessionFor(payload);
-    const reviews = reviewStops(allStops(await session(sessionKey)));
+    const data = await session(sessionKey);
+    const reviews = reviewStops(allStops(data));
     const code = payload.driver ? await driverCode(sessionKey, String(payload.driver)) : null;
+    const pitLap = payload.pitLap ? positiveInt(payload.pitLap, "pitLap") : null;
+    const estimate = code && pitLap ? rejoin(lapTable(data), code, pitLap) : null;
     return {
       stops: reviews.filter((r) => !code || r.driver === code),
       rule: "A stop is slow when it is at least 1.5 s over its team's median, or the session median for teams with fewer than 3 stops. Served time penalties are taken out.",
+      ...(pitLap
+        ? {
+            rejoin: estimate ?? `No estimate: ${code ?? "a driver"} needs a timed lap ${pitLap} and the session needs stops to measure a pit loss from.`,
+            rejoinMethod:
+              "Pit loss is the median, over this session's stops, of in-lap plus out-lap minus two laps at the car's own pace before the stop. The car's gap to the leader at the end of pitLap plus that loss is set among the others' gaps on that lap, assuming they keep their gaps. Times in seconds.",
+          }
+        : {}),
     };
   } catch (error) {
     return fail("pitStops", error);
-  }
-}
-
-export async function pitRejoin(payload: ActionPayload) {
-  logCall("pitRejoin", payload);
-  try {
-    const sessionKey = await sessionFor(payload);
-    const lap = positiveInt(payload.lap, "lap");
-    const code = await driverCode(sessionKey, String(payload.driver ?? ""));
-    const data = await session(sessionKey);
-    const result = rejoin(lapTable(data), code, lap);
-    if (!result) return { error: `${code} has no timed lap ${lap} in this session, or no stop to measure a pit loss from.` };
-    return {
-      ...result,
-      units: "Times in seconds. Gaps are to the leader at the line.",
-      method:
-        "Pit loss is the median, over this session's stops, of in-lap plus out-lap minus two laps at the car's own pace before the stop. The estimate assumes the other cars keep their gaps.",
-    };
-  } catch (error) {
-    return fail("pitRejoin", error);
   }
 }
 
@@ -241,12 +235,12 @@ export async function createFinding(payload: ActionPayload) {
     const contentId = payload.context?.confluence?.contentId;
     const link = contentId ? await pageLink(String(contentId)) : undefined;
     const projectKey = checkedKey(payload.projectKey) || link?.projectKey;
-    if (!projectKey) return { error: "Which Jira project should the issue go in? Give its key, for example PW." };
+    if (!projectKey) return problem("Which Jira project should the issue go in? Give its key, for example PW.");
     const existing = await issueKey(sessionKey, String(payload.findingId));
     if (existing) return { created: false, issue: existing, note: "An issue for this finding already exists." };
     const built = await debrief(sessionKey);
     const finding = built.findings.find((f) => f.id === payload.findingId);
-    if (!finding) return { error: `No finding ${payload.findingId}. Findings: ${built.findings.map((f) => f.id).join(", ") || "none"}.` };
+    if (!finding) return problem(`No finding ${payload.findingId}. Findings: ${built.findings.map((f) => f.id).join(", ") || "none"}.`);
     const pageUrl = link?.pageUrl ?? "";
     const siteUrl = siteOrigin(pageUrl ? new URL(pageUrl).origin : "");
     const issue = await createIssue(finding, built.session, projectKey, pageUrl, siteUrl);

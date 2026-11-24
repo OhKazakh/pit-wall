@@ -32,13 +32,14 @@ modules:
         - Every number comes from the actions. Pit Wall reads public timing data from OpenF1; a real team would use its own telemetry. Mention that once if someone asks where the data comes from.
         - If the conversation started on a Confluence page with a Session debrief, leave sessionKey out and the actions use that page's session. Otherwise, use the find-session action with the season, the race and the session the user names, then pass its sessionKey to the other actions.
         - Never guess a sessionKey. Use only one that find-session returned in this conversation.
+        - If an action answers with a problem, read it and do what it says. If the page's session can't be found, call find-session with the season and Grand Prix in the page title.
 
         How to answer:
         - Only state numbers that an action returned in this conversation. Never estimate, round up a story or fill a gap from memory. If the actions don't have it, say what is missing.
         - Name the action's rule when you use a finding, for example "1.5 s over the team's median".
         - To explain lost time in a stint, call stint-analysis with the driver and the stint. Use its worked-out comparisons as given: wearAboveCompoundMedian, paceVsField and gapChange. Don't do your own sums.
         - Describe a lap only by the note the action gave it. A lap with an empty note is a clean lap: it may be slow, but don't give it a reason.
-        - For "where would X have rejoined" questions, call pit-rejoin with the driver and the lap. Say it is an estimate, give the projected position and the cars just ahead and behind with their gaps, and the pit loss it used. If the driver really pitted on that lap, compare with what happened.
+        - For "where would X have rejoined" questions, call pit-stops with the driver and pitLap set to that lap, and use its rejoin part. Say it is an estimate, give the projected position and the cars just ahead and behind with their gaps, and the pit loss it used. If the driver really pitted on that lap, compare with what happened.
         - Give times in seconds with the decimals the action gave. Write drivers as their three-letter codes in plain text, for example NOR, never with an @ in front.
         - Keep answers short: the finding first, then the two or three numbers behind it.
 
@@ -56,7 +57,6 @@ modules:
         - session-summary
         - stint-analysis
         - pit-stops
-        - pit-rejoin
         - create-finding
 
   action:
@@ -127,8 +127,9 @@ modules:
       name: Pit stops
       function: fn-pit-stops
       actionVerb: GET
-      description: Every pit stop with its stationary time, the median it is compared
-        with and how far over it was. Use it for pit stop questions.
+      description: Every pit stop against its median and how far over it was. With a
+        driver and a pitLap, also where that driver would have rejoined had they pitted
+        at the end of that lap. For pit stop and pit window questions.
       inputs:
         sessionKey:
           title: Session key
@@ -141,30 +142,12 @@ modules:
           type: string
           required: false
           description: Only this driver's stops. Car number, code or surname.
-    - key: pit-rejoin
-      name: Pit rejoin
-      function: fn-pit-rejoin
-      actionVerb: GET
-      description: Where a driver would have come back on track had they pitted at the end
-        of a given lap, from the gaps at that lap and this session's typical pit loss. Use
-        it for pit window and undercut questions.
-      inputs:
-        sessionKey:
-          title: Session key
+        pitLap:
+          title: Pit lap
           type: integer
           required: false
-          description: From find-session. Leave out to use the session debriefed on the
-            current page.
-        driver:
-          title: Driver
-          type: string
-          required: true
-          description: Car number, three-letter code or surname, for example 4, NOR or Norris.
-        lap:
-          title: Lap
-          type: integer
-          required: true
-          description: The lap the driver would pit at the end of, for example 30.
+          description: With a driver, the lap they would pit at the end of, for a rejoin
+            estimate. For example 30.
     - key: create-finding
       name: Create finding issue
       function: fn-create-finding
@@ -202,8 +185,6 @@ modules:
       handler: index.stintAnalysis
     - key: fn-pit-stops
       handler: index.pitStops
-    - key: fn-pit-rejoin
-      handler: index.pitRejoin
     - key: fn-create-finding
       handler: index.createFinding
 
