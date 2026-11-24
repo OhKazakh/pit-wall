@@ -21,6 +21,10 @@ In Forge storage, inside your site's installation:
 
 It doesn't store Atlassian account IDs, names, email addresses or page content.
 
+## Logs
+
+Forge keeps the app's logs, such as errors and how long each call took. I read them in the developer console only to fix problems. A site admin can turn off my access to them, or view and download them, at admin.atlassian.com.
+
 ## What it sends
 
 Nothing leaves your site except the OpenF1 requests above. Jira issues are created in your own Jira, as the person who asked for them.
