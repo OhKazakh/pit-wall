@@ -1,6 +1,8 @@
 import Resolver from "@forge/resolver";
 import { stintDetail } from "./calc/debrief";
 import { reviewStops, pitStops as allStops } from "./calc/pits";
+import { lapTable } from "./calc/laps";
+import { rejoin } from "./calc/rejoin";
 import { meetings, sessions } from "./data/session";
 import { openf1, store } from "./data/kvs";
 import { createIssue, projects } from "./jira/issues";
@@ -85,6 +87,7 @@ interface ActionPayload {
   session?: string;
   driver?: string;
   stint?: number;
+  lap?: number;
   findingId?: string;
   projectKey?: string;
   context?: { confluence?: { contentId?: string } };
@@ -102,7 +105,7 @@ async function sessionFor(payload: ActionPayload): Promise<number> {
 
 // Only the action's own inputs are logged. The payload also carries a signed context token,
 // which must never end up in logs.
-const INPUTS = ["year", "race", "session", "sessionKey", "driver", "stint", "findingId", "projectKey"] as const;
+const INPUTS = ["year", "race", "session", "sessionKey", "driver", "stint", "lap", "findingId", "projectKey"] as const;
 function logCall(action: string, payload: ActionPayload) {
   const inputs = Object.fromEntries(INPUTS.filter((k) => payload[k] !== undefined).map((k) => [k, payload[k]]));
   console.log(`${action} ${JSON.stringify(inputs)}`);
@@ -208,6 +211,26 @@ export async function pitStops(payload: ActionPayload) {
     };
   } catch (error) {
     return fail("pitStops", error);
+  }
+}
+
+export async function pitRejoin(payload: ActionPayload) {
+  logCall("pitRejoin", payload);
+  try {
+    const sessionKey = await sessionFor(payload);
+    const lap = positiveInt(payload.lap, "lap");
+    const code = await driverCode(sessionKey, String(payload.driver ?? ""));
+    const data = await session(sessionKey);
+    const result = rejoin(lapTable(data), code, lap);
+    if (!result) return { error: `${code} has no timed lap ${lap} in this session, or no stop to measure a pit loss from.` };
+    return {
+      ...result,
+      units: "Times in seconds. Gaps are to the leader at the line.",
+      method:
+        "Pit loss is the median, over this session's stops, of in-lap plus out-lap minus two laps at the car's own pace before the stop. The estimate assumes the other cars keep their gaps.",
+    };
+  } catch (error) {
+    return fail("pitRejoin", error);
   }
 }
 

@@ -15,7 +15,7 @@ The demo uses public Formula 1 timing data from [OpenF1](https://openf1.org). A 
 - **Pit stops** (races): every stop against the median it's compared with, served penalties taken out
 - **Gaps** (races): the top 5's gap to the leader, lap by lap
 
-**Race engineer (Rovo agent).** Ask it about the session on the page, or about any session from 2023 on. It has five actions, and its prompt tells it to state only numbers those actions returned. Rovo's debug view lists which actions it called for each answer.
+**Race engineer (Rovo agent).** Ask it about the session on the page, or about any session from 2023 on. It has six actions, and its prompt tells it to state only numbers those actions returned. Rovo's debug view lists which actions it called for each answer.
 
 | Action | What it returns |
 | --- | --- |
@@ -23,6 +23,7 @@ The demo uses public Formula 1 timing data from [OpenF1](https://openf1.org). A 
 | Session summary | The order at the flag, best laps, stop counts and every finding with its numbers |
 | Stint analysis | One driver's stints, or one stint lap by lap with a note on each lap that isn't clean, plus its wear against the compound's median, its pace against the field on the same compound, and its gap to the leader at the start and end |
 | Pit stops | Every stop with its time, the median it's compared with and how far over it was |
+| Pit rejoin | Where a driver would have come back on track had they pitted at the end of a given lap: the position, the cars just ahead and behind with their gaps, and the pit loss used. If the driver really stopped on that lap, what happened |
 | Create finding issue | A Jira issue for one finding. Rovo asks you to confirm before it runs |
 
 Without a debrief on the page, the agent finds the session from what you name, for example "2024 Silverstone race".
@@ -51,6 +52,8 @@ All the maths lives in [`src/calc`](src/calc) and is covered by tests in [`test`
 **Pit stops.** OpenF1 gives each visit's pit lane time and, in recent seasons, the time the car stood still. Pit Wall uses the stationary time where it exists, because that is the crew's part of the stop, and pit lane time otherwise. A time penalty served at the stop is taken out, matched from race control's "penalty served" message within 5 minutes of the car leaving. Visits over 60 s in the pit lane are red-flag stops or repairs and are left out.
 
 **Slow stops.** A stop is a finding when it is at least 1.5 s slower than its team's median stop in that session. A team needs at least 3 stops for its own median; below that, the session's median is used.
+
+**Pit loss and rejoin.** A stop costs more than its pit lane time: the car also slows to enter and builds speed on the way out. Pit Wall measures each stop as the in-lap plus the out-lap, less two laps at the car's own pace (the median of its clean laps over the 5 laps before). The session's pit loss is the median of those, kept apart for green-flag stops and stops under a safety car or VSC. At Monza in 2025 the green-flag loss was 24.7 s over 19 stops. To place a car that pits at the end of a lap, its gap to the leader at that lap plus the pit loss is set among everyone else's gaps on the same lap. That assumes the others keep their gaps for the lap it takes, the usual pit-window estimate. For NOR's lap-46 stop at Monza it gives third, 1.1 s ahead of LEC, which is where he came out.
 
 **Gaps and order.** The gap to the leader is the time between the first car completing a lap and each car completing the same lap. The order at the flag is the order on track, by laps completed and then by who finished the last of them first, so penalties aren't applied.
 
@@ -91,7 +94,7 @@ src/data            compacting a session and caching it in Forge storage
 src/service.ts      what the macro and the agent share
 src/jira            creating issues
 src/frontend        the macro and its settings, in UI Kit
-src/index.ts        the resolver and the five agent actions
+src/index.ts        the resolver and the six agent actions
 test                tests, with the 2025 Italian Grand Prix as a fixture
 ```
 
