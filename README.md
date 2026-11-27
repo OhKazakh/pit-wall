@@ -4,6 +4,10 @@ Pit Wall turns a race session's timing data into a debrief in Confluence, a Rovo
 
 The demo uses public Formula 1 timing data from [OpenF1](https://openf1.org). A real team would plug in its own telemetry instead. Pit Wall is unofficial and not associated with Formula 1 or any team.
 
+[Demo video](https://youtu.be/gVYq1zWLjPg) (2 minutes): the idea, then the app running on a real Confluence and Jira site from 0:57.
+
+![The Session debrief macro on a Confluence page, showing the 2025 Italian Grand Prix findings](docs/debrief.jpg)
+
 ## What it does
 
 **Session debrief (Confluence macro).** Add it to a page, pick a season, a Grand Prix and a session, and optionally a Jira project. The macro shows:
@@ -24,6 +28,8 @@ The demo uses public Formula 1 timing data from [OpenF1](https://openf1.org). A 
 | Stint analysis | One driver's stints, or one stint lap by lap with a note on each lap that isn't clean, plus its wear against the compound's median, its pace against the field on the same compound, and its gap to the leader at the start and end |
 | Pit stops | Every stop with its time, the median it's compared with and how far over it was. Given a driver and a lap, also where that driver would have come back on track had they pitted at the end of it: the position, the cars just ahead and behind with their gaps, and the pit loss used. If the driver really stopped on that lap, what happened |
 | Create finding issue | A Jira issue for one finding. Rovo asks you to confirm before it runs |
+
+![Race engineer in Rovo chat estimating where NOR would have rejoined after a lap-30 stop](docs/race-engineer.jpg)
 
 Without a debrief on the page, the agent finds the session from what you name, for example "2024 Silverstone race".
 
